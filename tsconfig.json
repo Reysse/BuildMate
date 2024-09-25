@@ -1,0 +1,23 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "target": "esnext", // or a specific version like "es6"
+    "module": "commonjs", // or "esnext" for modern module syntax
+    "jsx": "react-native", // important for React Native projects
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true, // avoid implicit any types
+    "paths": {
+      "@/*": ["./*"] // Aliases for imports
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": ["node_modules"] // exclude node_modules
+}

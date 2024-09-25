@@ -4,7 +4,7 @@ export default function Layout() {
   return (
     <Stack>
       <Stack.Screen
-        name="" // corresponds to LoginScreen
+        name="index" // corresponds to LoginScreen
         options={{ headerShown: false }}
       />
       <Stack.Screen

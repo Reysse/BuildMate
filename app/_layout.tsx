@@ -1,20 +1,14 @@
 import { Stack } from "expo-router";
+import { AuthProvider } from './AuthContext'; // Adjust the path
 
 export default function Layout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="index" // corresponds to LoginScreen
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="register" // corresponds to RegistrationScreen
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="login-success" // corresponds to LoginSuccessScreen
-        options={{ headerShown: false }}
-      />
-    </Stack>
+    <AuthProvider>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="login-success" options={{ headerShown: false }} />
+      </Stack>
+    </AuthProvider>
   );
 }

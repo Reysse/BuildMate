@@ -1,33 +1,70 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  ToastAndroid,
-  ImageBackground,
-} from "react-native";
+import React, { useEffect, useState, useContext } from "react";
+import { View, Text, TextInput, Button, StyleSheet, ToastAndroid, ImageBackground } from "react-native";
+import axios from 'axios';
 import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthContext } from './AuthContext';
 
-const backgroundImage = require("../assets/images/LoginComputer.jpg"); // img background
+const backgroundImage = require("../assets/images/LoginComputer.jpg");
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
+  const authContext = useContext(AuthContext);
+  const { login } = authContext!;
+  useEffect(() => {
+    const checkUserSession = async () => {
+      const storedUserId = await AsyncStorage.getItem('user_id');
+      if (storedUserId) {
+        try {
+          const response = await axios.get('http://192.168.1.12/BuildMate/api.php?checkSession=true');
+          if (response.data.isLoggedIn) { 
+            ToastAndroid.show(`Logged in as ${response.data.username}`, ToastAndroid.SHORT);
+            const userData = { id: response.data.user_id, username: response.data.username };
+            login(userData); 
+            router.push("./login-success");
+          } else {
+            await AsyncStorage.removeItem('user_id');
+          }
+        } catch (error) {
+          console.error("Error checking session:", error);
+        }
+      }
+    };
 
-  const handleLogin = () => {
+    checkUserSession();
+  }, [router]);
+
+  const handleLogin = async () => {
     if (username === "" || password === "") {
       ToastAndroid.show("Please fill in both fields", ToastAndroid.SHORT);
       return;
     }
 
-    setUsername(""); // set username input blank after entry
-    setPassword(""); // set password input blank after entry
+    try {
+      const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
+        action: 'login',
+        username,
+        password,
+      });
 
-    ToastAndroid.show(`Logged in as ${username}`, ToastAndroid.SHORT); // notif success log in
-    router.push("./login-success"); // redirected to login success page
+      if (response.data.success) {
+        const userData = { id: response.data.user_id, username: response.data.username };
+        await AsyncStorage.setItem('user_id', userData.id.toString());
+        login(userData); 
+        ToastAndroid.show(`Logged in as ${username}`, ToastAndroid.SHORT);
+        router.push("./login-success");
+      } else {
+        ToastAndroid.show(response.data.message || "Login failed", ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      console.error("Error during login:", error);
+      ToastAndroid.show("Error during login", ToastAndroid.SHORT);
+    }
+
+    setUsername("");
+    setPassword("");
   };
 
   return (
@@ -60,7 +97,7 @@ export default function LoginScreen() {
         <View style={styles.buttonContainer}>
           <Button
             title="Register"
-            onPress={() => router.push("./register")} // Navigate to register screen
+            onPress={() => router.push("./register")}
             color="#28a745"
           />
         </View>

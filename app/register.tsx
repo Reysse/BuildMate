@@ -3,26 +3,23 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   Button,
   StyleSheet,
   ToastAndroid,
-  ImageBackground,
 } from "react-native";
 import axios from "axios";
 import { useRouter } from "expo-router";
-
-const backgroundImage = require("../assets/images/RegistrationBackground.jpg");
+import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
 
 // Define the User interface
 interface User {
   id: number;
-  username: string;
   email: string;
 }
 
 export default function RegistrationScreen() {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); // Only email and password now
   const [password, setPassword] = useState("");
   const router = useRouter();
 
@@ -30,14 +27,14 @@ export default function RegistrationScreen() {
 
   // Memoized error message
   const errorMessage = useMemo(() => {
-    if (!username || !email || !password) {
+    if (!email || !password) {
       return "Please fill in all fields.";
     }
     if (!emailPattern.test(email)) {
       return "Please enter a valid email address.";
     }
     return "";
-  }, [username, email, password]);
+  }, [email, password]);
 
   const handleRegistration = async () => {
     if (errorMessage) {
@@ -54,13 +51,11 @@ export default function RegistrationScreen() {
 
       const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
         action: 'register',
-        username,
         email,
         password,
       });
 
       ToastAndroid.show(response.data.message, ToastAndroid.SHORT);
-      setUsername("");
       setEmail("");
       setPassword("");
     } catch (error: any) {
@@ -71,16 +66,18 @@ export default function RegistrationScreen() {
   };
 
   return (
-    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
+    <LinearGradient
+      colors={['#ffffff', '#008FDD']}
+      start={{ x: 0.5, y: 0.8 }} // Start the gradient around 90% down
+      end={{ x: 0.5, y: 1 }} // End at the bottom
+      style={styles.background}
+    >
       <View style={styles.container}>
-        <Text style={styles.title}>Register</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          value={username}
-          onChangeText={setUsername}
+        <Image
+          source={require("../assets/images/BuildMate-Logo.png")} // Local image
+          style={styles.image}
         />
+        <Text style={styles.title}>BUILDMATE</Text>
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -106,7 +103,7 @@ export default function RegistrationScreen() {
           />
         </View>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
@@ -116,22 +113,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-  },
   container: {
     width: "90%",
     maxWidth: 400,
     padding: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 12,
     alignItems: "center",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 24,
+    fontSize: 35,
+    fontWeight: "900",
+    marginBottom: 50,
     color: "#333",
   },
   input: {
@@ -148,5 +139,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: "100%",
   },
+  image: {
+    width: 175,
+    height: 175,
+    resizeMode: "cover",
+    borderRadius: 10,
+  },
 });
-

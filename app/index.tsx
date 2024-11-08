@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useContext } from "react";
-import { View, Text, TextInput, Button, StyleSheet, ToastAndroid, ImageBackground } from "react-native";
+import { View, Text, TextInput, Image, Button, StyleSheet, ToastAndroid } from "react-native";
 import axios from 'axios';
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from './AuthContext';
-
-const backgroundImage = require("../assets/images/LoginComputer.jpg");
+import { LinearGradient } from 'expo-linear-gradient'; // Use Expo's LinearGradient
+import { AuthContext } from './AuthContext'; // Your auth context
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); 
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const authContext = useContext(AuthContext);
+  const authContext = useContext(AuthContext); 
   const { login } = authContext!;
+
   useEffect(() => {
     const checkUserSession = async () => {
       const storedUserId = await AsyncStorage.getItem('user_id');
@@ -20,10 +20,14 @@ export default function LoginScreen() {
         try {
           const response = await axios.get('http://192.168.1.12/BuildMate/api.php?checkSession=true');
           if (response.data.isLoggedIn) { 
-            ToastAndroid.show(`Logged in as ${response.data.username}`, ToastAndroid.SHORT);
-            const userData = { id: response.data.user_id, username: response.data.username };
-            login(userData); 
-            router.push("./login-success");
+            ToastAndroid.show('Logged in', ToastAndroid.SHORT);
+            const userData = { 
+              id: response.data.user_id, 
+              username: response.data.username 
+            } 
+            login(userData); // Store user data in AuthContext
+            router.push("./home");
+            
           } else {
             await AsyncStorage.removeItem('user_id');
           }
@@ -37,7 +41,7 @@ export default function LoginScreen() {
   }, [router]);
 
   const handleLogin = async () => {
-    if (username === "" || password === "") {
+    if (email === "" || password === "") {
       ToastAndroid.show("Please fill in both fields", ToastAndroid.SHORT);
       return;
     }
@@ -45,16 +49,30 @@ export default function LoginScreen() {
     try {
       const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
         action: 'login',
-        username,
+        email,  // Use email instead of username
         password,
       });
 
       if (response.data.success) {
-        const userData = { id: response.data.user_id, username: response.data.username };
-        await AsyncStorage.setItem('user_id', userData.id.toString());
-        login(userData); 
-        ToastAndroid.show(`Logged in as ${username}`, ToastAndroid.SHORT);
-        router.push("./login-success");
+        const userData = { 
+          id: response.data.user_id, 
+          username: response.data.username // Get the username from the response
+        };
+
+        if (!userData.username) {
+          // If no username, redirect to NewUser screen
+          await AsyncStorage.setItem('user_id', userData.id.toString());
+          login(userData);
+          router.push("./newuser");
+        } else {
+          await AsyncStorage.setItem('user_id', userData.id.toString());
+          login(userData); // Store user data in AuthContext
+
+          // Show success message
+          ToastAndroid.show('Logged in', ToastAndroid.SHORT);
+          
+          router.push("./home");
+        }
       } else {
         ToastAndroid.show(response.data.message || "Login failed", ToastAndroid.SHORT);
       }
@@ -63,25 +81,29 @@ export default function LoginScreen() {
       ToastAndroid.show("Error during login", ToastAndroid.SHORT);
     }
 
-    setUsername("");
+    setEmail("");
     setPassword("");
   };
 
   return (
-    <ImageBackground
-      source={backgroundImage}
+    <LinearGradient
+      colors={['#ffffff', '#008FDD']}
+      start={{ x: 0.5, y: 0.8 }} 
+      end={{ x: 0.5, y: 1 }} 
       style={styles.background}
-      resizeMode="cover"
     >
-      <View style={styles.overlay} />
       <View style={styles.container}>
-        <Text style={styles.title}>Login</Text>
+        <Image
+          source={require("../assets/images/BuildMate-Logo.png")}
+          style={styles.image}
+        />
+        <Text style={styles.title}>BUILDMATE</Text>
         <TextInput
           style={styles.input}
-          placeholder="Username"
+          placeholder="Email"
           placeholderTextColor="#888"
-          value={username}
-          onChangeText={setUsername}
+          value={email}
+          onChangeText={setEmail}
         />
         <TextInput
           style={styles.input}
@@ -102,7 +124,7 @@ export default function LoginScreen() {
           />
         </View>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
@@ -112,22 +134,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-  },
   container: {
     width: "90%",
     maxWidth: 400,
     padding: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 12,
     alignItems: "center",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 24,
+    fontSize: 35,
+    fontWeight: "900",
+    marginBottom: 50,
     color: "#333",
   },
   input: {
@@ -143,5 +159,11 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 12,
     width: "100%",
+  },
+  image: {
+    width: 175,
+    height: 175,
+    resizeMode: "cover", 
+    borderRadius: 10,
   },
 });

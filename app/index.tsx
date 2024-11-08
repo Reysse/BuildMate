@@ -19,8 +19,9 @@ export default function LoginScreen() {
       if (storedUserId) {
         try {
           const response = await axios.get('http://192.168.1.12/BuildMate/api.php?checkSession=true');
-          if (response.data.isLoggedIn) { 
-            ToastAndroid.show('Logged in', ToastAndroid.SHORT);
+          if (response.data.isLoggedIn && (response.data.username !== undefined && response.data.username !== "")) { 
+            ToastAndroid.show(`Logged in as ${response.data.username}`, ToastAndroid.SHORT);
+
             const userData = { 
               id: response.data.user_id, 
               username: response.data.username 

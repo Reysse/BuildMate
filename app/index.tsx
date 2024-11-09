@@ -24,7 +24,8 @@ export default function LoginScreen() {
 
             const userData = { 
               id: response.data.user_id, 
-              username: response.data.username 
+              username: response.data.username,
+              email: response.data.email
             } 
             login(userData); // Store user data in AuthContext
             router.push("./home");
@@ -57,7 +58,8 @@ export default function LoginScreen() {
       if (response.data.success) {
         const userData = { 
           id: response.data.user_id, 
-          username: response.data.username // Get the username from the response
+          username: response.data.username, // Get the username from the response
+          email: response.data.email
         };
 
         if (!userData.username) {

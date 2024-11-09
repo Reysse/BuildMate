@@ -18,25 +18,26 @@ export default function NewUser() {
       ToastAndroid.show("Please enter a username", ToastAndroid.SHORT);
       return;
     }
-
+  
     try {
       const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
         action: 'continue',
         username,
       });
-
+  
       if (response.data.success) {
         const userData = {
           id: response.data.user_id,
-          username: username, // Use the username entered by the user
+          username: response.data.username, // corrected to use returned username
+          email: response.data.email // corrected to use returned email
         };
-
+  
         // Save the user data to context
         login(userData);
-
+  
         // Store user ID in AsyncStorage if needed
         await AsyncStorage.setItem('user_id', userData.id.toString());
-
+  
         // Provide feedback and navigate
         ToastAndroid.show('Username saved successfully', ToastAndroid.SHORT);
         router.push("./home"); // Navigate to the success screen
@@ -46,7 +47,7 @@ export default function NewUser() {
     } catch (error) {
       console.error("Error during request:", error);
     }
-  };
+  };  
 
   return (
     <LinearGradient

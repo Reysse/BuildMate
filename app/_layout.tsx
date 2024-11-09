@@ -16,6 +16,7 @@ export default function Layout() {
         <Stack.Screen name="newuser" options={{ headerShown: false }} />
         <Stack.Screen name="home" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="account" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>
   );

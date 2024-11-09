@@ -8,15 +8,9 @@ import {
   StyleSheet,
   ToastAndroid,
 } from "react-native";
-import axios from "axios";
+import axios, { AxiosResponse } from 'axios';
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
-
-// Define the User interface
-interface User {
-  id: number;
-  email: string;
-}
 
 export default function RegistrationScreen() {
   const [email, setEmail] = useState(""); // Only email and password now
@@ -41,29 +35,33 @@ export default function RegistrationScreen() {
       ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
       return;
     }
-
+  
     try {
-      const emailCheckResponse = await axios.get(`http://192.168.1.12/BuildMate/api.php?email=${email}`);
+      const emailCheckResponse: AxiosResponse<{ exists: boolean }> = await axios.get(`http://192.168.1.12/BuildMate/api.php?email=${email}`);
       if (emailCheckResponse.data.exists) {
         ToastAndroid.show("Email address is already in use", ToastAndroid.SHORT);
         return;
       }
-
-      const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
+  
+      const response: AxiosResponse<{ success: boolean; message: string }> = await axios.post('http://192.168.1.12/BuildMate/api.php', {
         action: 'register',
         email,
         password,
       });
-
-      ToastAndroid.show(response.data.message, ToastAndroid.SHORT);
-      setEmail("");
-      setPassword("");
-    } catch (error: any) {
+  
+      if (response.data.success) {
+        ToastAndroid.show("Registration successful", ToastAndroid.SHORT);
+        setEmail("");
+        setPassword("");
+      } else {
+        ToastAndroid.show(response.data.message || "Registration failed", ToastAndroid.SHORT);
+      }
+    } catch (error) {
       console.error("Registration error:", error);
-      const message = error.response?.data?.message || "Unknown error";
+      const message = (error as any)?.response?.data?.message || "Unknown error";
       ToastAndroid.show("Registration failed: " + message, ToastAndroid.SHORT);
     }
-  };
+  };  
 
   return (
     <LinearGradient

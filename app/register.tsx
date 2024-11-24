@@ -8,12 +8,14 @@ import {
   StyleSheet,
   ToastAndroid,
 } from "react-native";
-import axios, { AxiosResponse } from 'axios';
 import { useRouter } from "expo-router";
-import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
+import { LinearGradient } from "expo-linear-gradient";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "./firebaseConfig"; // Firebase setup file
 
 export default function RegistrationScreen() {
-  const [email, setEmail] = useState(""); // Only email and password now
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
 
@@ -27,6 +29,9 @@ export default function RegistrationScreen() {
     if (!emailPattern.test(email)) {
       return "Please enter a valid email address.";
     }
+    if (password.length < 6) {
+      return "Password must be at least 6 characters long.";
+    }
     return "";
   }, [email, password]);
 
@@ -35,44 +40,55 @@ export default function RegistrationScreen() {
       ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
       return;
     }
-  
+
     try {
-      const emailCheckResponse: AxiosResponse<{ exists: boolean }> = await axios.get(`http://192.168.1.12/BuildMate/api.php?email=${email}`);
-      if (emailCheckResponse.data.exists) {
-        ToastAndroid.show("Email address is already in use", ToastAndroid.SHORT);
-        return;
+      // Try to create the user with the provided email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Firestore: Check if user exists, else create a new one
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If user doesn't exist, create a new user document with username field
+        await setDoc(userDocRef, {
+          email: user.email,
+          username: "", // Initialize username as empty
+          createdAt: new Date().toISOString(),
+        });
+        ToastAndroid.show("Registered Successfully", ToastAndroid.SHORT);
       }
-  
-      const response: AxiosResponse<{ success: boolean; message: string }> = await axios.post('http://192.168.1.12/BuildMate/api.php', {
-        action: 'register',
-        email,
-        password,
-      });
-  
-      if (response.data.success) {
-        ToastAndroid.show("Registration successful", ToastAndroid.SHORT);
-        setEmail("");
-        setPassword("");
-      } else {
-        ToastAndroid.show(response.data.message || "Registration failed", ToastAndroid.SHORT);
-      }
+
+      // Clear inputs
+      setEmail("");
+      setPassword("");
+
+      // Navigate to the login screen after successful registration
+      router.replace("./");
     } catch (error) {
-      console.error("Registration error:", error);
-      const message = (error as any)?.response?.data?.message || "Unknown error";
-      ToastAndroid.show("Registration failed: " + message, ToastAndroid.SHORT);
+      // Handle Firebase errors, including email already in use
+      if (error.code === "auth/email-already-in-use") {
+        ToastAndroid.show("The email address is already in use by another account.", ToastAndroid.SHORT);
+      } else {
+        console.error("Registration error:", error);
+        const errorMessage =
+          error.message || "Registration failed. Please try again.";
+        ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
+      }
     }
-  };  
+  };
 
   return (
     <LinearGradient
-      colors={['#ffffff', '#008FDD']}
-      start={{ x: 0.5, y: 0.8 }} // Start the gradient around 90% down
-      end={{ x: 0.5, y: 1 }} // End at the bottom
+      colors={["#ffffff", "#008FDD"]}
+      start={{ x: 0.5, y: 0.8 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.background}
     >
       <View style={styles.container}>
         <Image
-          source={require("../assets/images/BuildMate-Logo.png")} // Local image
+          source={require("../assets/images/BuildMate-Logo.png")}
           style={styles.image}
         />
         <Text style={styles.title}>BUILDMATE</Text>
@@ -91,12 +107,16 @@ export default function RegistrationScreen() {
           onChangeText={setPassword}
         />
         <View style={styles.buttonContainer}>
-          <Button title="Register" onPress={handleRegistration} color="#28a745" />
+          <Button
+            title="Register"
+            onPress={handleRegistration}
+            color="#28a745"
+          />
         </View>
         <View style={styles.buttonContainer}>
           <Button
             title="Back"
-            onPress={() => router.replace("./")} // Go back to login screen
+            onPress={() => router.replace("./")} // Navigate back to login screen
             color="#007bff"
           />
         </View>

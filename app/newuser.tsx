@@ -1,57 +1,78 @@
-import React, { useState, useContext } from "react";
-import { View, Text, TextInput, Image, Button, StyleSheet, ToastAndroid } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Image,
+  Button,
+  StyleSheet,
+  ToastAndroid,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from 'expo-linear-gradient'; // Use Expo's LinearGradient
-import { AuthContext } from './AuthContext'; // Assuming your AuthContext is set up
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth, firestore } from "./firebaseConfig"; // Import Firebase Authentication and Firestore
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth"; // For updating the user profile
 
 export default function NewUser() {
-  const [username, setUsername] = useState(""); // Username state for registration
+  const [username, setUsername] = useState(""); // State for storing the username
   const router = useRouter();
-  const authContext = useContext(AuthContext);
-  const { login } = authContext!;
 
-  // Handle continue button click (e.g., after username is entered)
+  // Get the current authenticated user UID
+  const user = auth.currentUser;
+
+  // If user is not logged in, navigate back to the login screen
+  useEffect(() => {
+    if (!user) {
+      router.push("/login");
+    }
+  }, [user, router]);
+
   const handleContinue = async () => {
     if (!username) {
       ToastAndroid.show("Please enter a username", ToastAndroid.SHORT);
       return;
     }
-  
+
     try {
-      const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
-        action: 'continue',
-        username,
-      });
-  
-      if (response.data.success) {
-        const userData = {
-          id: response.data.user_id,
-          username: response.data.username, // corrected to use returned username
-          email: response.data.email // corrected to use returned email
-        };
-  
-        // Save the user data to context
-        login(userData);
-  
-        // Store user ID in AsyncStorage if needed
-        await AsyncStorage.setItem('user_id', userData.id.toString());
-  
-        // Provide feedback and navigate
-        ToastAndroid.show('Username saved successfully', ToastAndroid.SHORT);
-        router.push("./home"); // Navigate to the success screen
+      const userDocRef = doc(firestore, "users", user.uid); // Use the UID of the current user
+
+      // Check if the username already exists in Firestore (for other users)
+      const docSnap = await getDoc(userDocRef);
+
+      if (docSnap.exists()) {
+        // If user document already exists, update the username
+        await setDoc(
+          userDocRef,
+          {
+            username,
+            createdAt: docSnap.data().createdAt || new Date().toISOString(), // Keep existing createdAt
+          },
+          { merge: true } // Merge so we don't overwrite other fields
+        );
+
+        // Update the user's profile with the new username in Firebase Authentication
+        await updateProfile(user, { displayName: username });
+
+        // Save the username locally using AsyncStorage
+        await AsyncStorage.setItem("username", username);
+
+        // Provide feedback and navigate to the home screen
+        ToastAndroid.show("Username saved successfully", ToastAndroid.SHORT);
+        router.push("./home");
       } else {
-        ToastAndroid.show(response.data.message || "Login failed", ToastAndroid.SHORT);
+        ToastAndroid.show("Error: User document not found", ToastAndroid.SHORT);
       }
     } catch (error) {
-      console.error("Error during request:", error);
+      console.error("Error saving username:", error);
+      ToastAndroid.show("Error saving username", ToastAndroid.SHORT);
     }
-  };  
+  };
 
   return (
     <LinearGradient
-      colors={['#ffffff', '#008FDD']}
+      colors={["#ffffff", "#008FDD"]}
       start={{ x: 0.5, y: 0.8 }}
       end={{ x: 0.5, y: 1 }}
       style={styles.background}
@@ -117,5 +138,4 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     borderRadius: 10,
   },
-  
 });

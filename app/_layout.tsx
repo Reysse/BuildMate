@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { AuthProvider } from './AuthContext'; // Adjust the path
+import { AuthProvider } from "./AuthContext";
 
 export default function Layout() {
   return (
@@ -13,11 +13,10 @@ export default function Layout() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="newuser" options={{ headerShown: false }} />
         <Stack.Screen name="home" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="account" options={{ headerShown: false }} />
       </Stack>
-    </AuthProvider>
+      </AuthProvider>
   );
 }

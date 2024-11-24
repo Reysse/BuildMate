@@ -1,28 +1,40 @@
-import React, { useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import axios from 'axios';
-import { AuthContext } from './AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { firestore } from './firebaseConfig'; // Firebase configuration
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore methods
+import AuthContext from './AuthContext'; // Import AuthContext
 
 export default function Profile() {
+  const [userProfile, setUserProfile] = useState(null); // To hold the user data
   const router = useRouter();
-  const authContext = useContext(AuthContext);
-  
-  if (!authContext) {
-    return <Text>Error: AuthContext not available</Text>;
-  }
 
-  const { user, logout } = authContext;
+  // Use the context to get the authenticated user and username
+  const { user, username } = useContext(AuthContext);
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    if (!user) {
+      router.replace("./"); // If no user is logged in, redirect to the login screen
+    } else {
+      fetchUserProfile();
+    }
+  }, [user, router]);
+
+  // Fetch user profile data from Firestore
+  const fetchUserProfile = async () => {
     try {
-      await axios.get('http://192.168.1.12/BuildMate/api.php?logout=true');
-      logout();
-      router.replace("./");
+      const userDocRef = doc(firestore, "users", user.uid); // Get the user's document reference from Firestore
+      const docSnap = await getDoc(userDocRef);
+
+      if (docSnap.exists()) {
+        setUserProfile(docSnap.data()); // Set the user profile data
+      } else {
+        console.log("No such document!");
+      }
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("Error fetching user profile:", error);
     }
   };
 
@@ -34,6 +46,21 @@ export default function Profile() {
     router.push("./account");
   };
 
+  const handleAvatarChange = () => {
+    // Implement avatar change functionality here (e.g., using an image picker)
+  };
+
+  const handleAvatarDelete = async () => {
+    try {
+      const userDocRef = doc(firestore, "users", user.uid);
+      await setDoc(userDocRef, { avatar: null }, { merge: true });
+
+      fetchUserProfile();
+    } catch (error) {
+      console.error("Error deleting avatar:", error);
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#008FDD', '#ffffff']}
@@ -41,56 +68,55 @@ export default function Profile() {
       end={{ x: 0.5, y: 0.2 }}
       style={styles.background}
     >
-        <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/images/BuildMate-Logo.png")}
-              style={styles.image}
-            />
-            <Text style={styles.title}>BUILDMATE</Text>
-        </View>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require("../assets/images/BuildMate-Logo.png")}
+          style={styles.image}
+        />
+        <Text style={styles.title}>BUILDMATE</Text>
+      </View>
       <View style={styles.TopMenu}>
         <TouchableOpacity style={styles.TopmenuItem} onPress={navigateToAccount}>
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Account</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]}>
+        <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]} >
           <Text style={[styles.TopmenuText, { color: 'black', fontWeight: "900" }]}>Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]}>
+        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]} >
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Completed Builds</Text>
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer}>
         <View style={styles.section}>
-            <Text style={styles.avatarText}>Manage Avatar</Text>
-            <View style={styles.avatarContainer}>
-                <Image
-                  source={require("../assets/images/avatar.jpg")} // Replace with your avatar image path
-                  style={styles.avatarImage}
-                />
-                <View style={styles.avatarButtons}>
-                  <TouchableOpacity style={styles.changeButton}>
-                      <Text style={styles.changebuttonText}>Change Avatar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteButton}>
-                      <Text style={styles.deletebuttonText}>Delete Avatar</Text>
-                  </TouchableOpacity>
-                </View>
+          <Text style={styles.avatarText}>Manage Avatar</Text>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={userProfile && userProfile.avatar ? { uri: userProfile.avatar } : require("../assets/images/avatar.jpg")}
+              style={styles.avatarImage}
+            />
+            <View style={styles.avatarButtons}>
+              <TouchableOpacity style={styles.changeButton} onPress={handleAvatarChange}>
+                <Text style={styles.changebuttonText}>Change Avatar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteButton} onPress={handleAvatarDelete}>
+                <Text style={styles.deletebuttonText}>Delete Avatar</Text>
+              </TouchableOpacity>
             </View>
-            {user ? (
-            <Text style={styles.successText}>{user.username}</Text>
-            ) : (
-            <Text style={styles.successText}>Username</Text>
-            )}
+          </View>
+          {/* Display the username from AuthContext */}
+          <Text style={styles.successText}>
+            {username || "No username available"}
+          </Text>
         </View>
         <View style={styles.section}>
-            <Text style={styles.paragraph}>You have not entered profile description</Text>
-            <TouchableOpacity style={styles.descriptionButton}>
-                <Text style={styles.descriptionbuttonText}>Edit Description</Text>
-            </TouchableOpacity>
+          <Text style={styles.paragraph}>You have not entered profile description</Text>
+          <TouchableOpacity style={styles.descriptionButton}>
+            <Text style={styles.descriptionbuttonText}>Edit Description</Text>
+          </TouchableOpacity>
         </View>
         <View style={[styles.section, { borderBottomWidth: 0 }]}>
-            <Text style={{ fontWeight: "900" }}>Completed Builds</Text>
-            <Text style={{ fontWeight: "900" }}>2</Text>
+          <Text style={{ fontWeight: "900" }}>Completed Builds</Text>
+          <Text style={{ fontWeight: "900" }}>2</Text>
         </View>
       </ScrollView>
 
@@ -216,28 +242,19 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     alignItems: "center",
-    marginVertical: 20,
   },
   avatarImage: {
     width: 150,
     height: 150,
-    borderRadius: 100,
+    borderRadius: 75,
     marginBottom: 10,
     borderColor: "lightgray",
+    borderWidth: 1,
   },
   avatarButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: '80%',
-  },
-  deleteButton: {
-    backgroundColor: "white",
-    borderColor: "red",
-    borderWidth: 2,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 5,
-    alignItems: "center",
   },
   changeButton: {
     backgroundColor: "white",
@@ -249,6 +266,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
+  deleteButton: {
+    backgroundColor: "white",
+    borderColor: "red",
+    borderWidth: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  changebuttonText: {
+    color: "#0056FF",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  deletebuttonText: {
+    color: "red",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
   descriptionButton: {
     backgroundColor: "#0056FF",
     borderColor: "#0056FF",
@@ -258,16 +294,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
     marginRight: 10,
-  },
-  deletebuttonText: {
-    color: "red",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  changebuttonText: {
-    color: "#0056FF",
-    fontWeight: "bold",
-    fontSize: 14,
   },
   descriptionbuttonText: {
     color: "white",

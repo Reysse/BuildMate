@@ -2,29 +2,31 @@ import React, { useContext } from "react";
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import axios from 'axios';
-import { AuthContext } from './AuthContext';
+import AuthContext from './AuthContext'; // Importing the AuthContext
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Account() {
   const router = useRouter();
-  const authContext = useContext(AuthContext);
-  
-  if (!authContext) {
-    return <Text>Error: AuthContext not available</Text>;
-  }
+  const { user, username, email, logout } = useContext(AuthContext); // Destructure user, username, and email from AuthContext
 
-  const { user, logout } = authContext;
 
   const handleLogout = async () => {
     try {
-      await axios.get('http://192.168.1.12/BuildMate/api.php?logout=true');
-      logout();
-      router.replace("./");
+      // Clear user data from context first (if required)
+      
+      await logout();  // Assuming this is the function from AuthContext
+      
+      // Use `router.replace()` to navigate without causing flashing
+      router.replace("./"); // Or replace with the appropriate login screen path
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
+  
+  
+  
 
   const navigateToHome = () => {
     router.push("./home");
@@ -41,13 +43,14 @@ export default function Account() {
       end={{ x: 0.5, y: 0.2 }}
       style={styles.background}
     >
-        <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/images/BuildMate-Logo.png")}
-              style={styles.image}
-            />
-            <Text style={styles.title}>BUILDMATE</Text>
-        </View>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require("../assets/images/BuildMate-Logo.png")}
+          style={styles.image}
+        />
+        <Text style={styles.title}>BUILDMATE</Text>
+      </View>
+
       <View style={styles.TopMenu}>
         <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]}>
           <Text style={[styles.TopmenuText, { color: 'black', fontWeight: "900" }]}>Account</Text>
@@ -59,30 +62,36 @@ export default function Account() {
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Completed Builds</Text>
         </TouchableOpacity>
       </View>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.section}>
+      <View style={styles.section}>
         <TouchableOpacity style={styles.usernameContainer}>
             <Text style={styles.successText}>
-            {user ? user.username : "Username"}
+                {username || (user && user.displayName) || "Username"}
             </Text>
             <Icon name="pencil" size={20} color="#008FDD" style={styles.pencilIcon} />
         </TouchableOpacity>
         </View>
+
         <View style={styles.section}>
-            <Text style={[styles.paragraph, {fontWeight: "900", alignSelf: "baseline"}]}>Email</Text>
-            <Text style={[styles.paragraph, {alignSelf: "baseline"}]}>{user?.email}</Text>
-            <TouchableOpacity style={styles.ChangeEmailButton}>
-                <Text style={styles.ChangeEmailText}>Change Email</Text>
-            </TouchableOpacity>
+        <Text style={[styles.paragraph, { fontWeight: "900", alignSelf: "baseline" }]}>Email</Text>
+        <Text style={[styles.paragraph, { alignSelf: "baseline" }]}>
+            {email || (user && user.email) || "Email"}
+        </Text>
+        <TouchableOpacity style={styles.ChangeEmailButton}>
+            <Text style={styles.ChangeEmailText}>Change Email</Text>
+        </TouchableOpacity>
         </View>
+
+
         <View style={[styles.section, { borderBottomWidth: 0 }]}>
-            <Text style={[styles.paragraph, {fontWeight: "900", alignSelf: "baseline"}]}>Password</Text>
-            <TouchableOpacity style={styles.ChangePasswordButton}>
-                <Text style={styles.ChangePasswordText}>Change Password</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.logoutButton, {marginTop: 100}]} onPress={handleLogout}>
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
+          <Text style={[styles.paragraph, { fontWeight: "900", alignSelf: "baseline" }]}>Password</Text>
+          <TouchableOpacity style={styles.ChangePasswordButton}>
+            <Text style={styles.ChangePasswordText}>Change Password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.logoutButton, { marginTop: 100 }]} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

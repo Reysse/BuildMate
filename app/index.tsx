@@ -1,41 +1,37 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Image, Button, StyleSheet, ToastAndroid } from "react-native";
-import axios from 'axios';
 import { useRouter } from "expo-router";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient'; // Use Expo's LinearGradient
-import { AuthContext } from './AuthContext'; // Your auth context
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "./firebaseConfig"; // Adjusted import to use your Firebase config
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState(""); 
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const authContext = useContext(AuthContext); 
-  const { login } = authContext!;
 
   useEffect(() => {
     const checkUserSession = async () => {
-      const storedUserId = await AsyncStorage.getItem('user_id');
+      const storedUserId = await AsyncStorage.getItem("user_id");
       if (storedUserId) {
-        try {
-          const response = await axios.get('http://192.168.1.12/BuildMate/api.php?checkSession=true');
-          if (response.data.isLoggedIn && (response.data.username !== undefined && response.data.username !== "")) { 
-            ToastAndroid.show(`Logged in successfully`, ToastAndroid.SHORT);
+        // Automatically sign in the user if user_id exists in AsyncStorage
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const userDocRef = doc(firestore, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
 
-            const userData = { 
-              id: response.data.user_id, 
-              username: response.data.username,
-              email: response.data.email
-            } 
-            login(userData); // Store user data in AuthContext
-            router.push("./home");
-            
+            if (userDoc.exists() && userDoc.data().username) {
+              router.push("./home"); // Redirect to home if username exists
+            } else {
+              router.push("./newuser"); // Redirect to NewUser if no username
+            }
           } else {
-            await AsyncStorage.removeItem('user_id');
+            // If user is not logged in, clear the stored user_id
+            AsyncStorage.removeItem("user_id");
           }
-        } catch (error) {
-          console.error("Error checking session:", error);
-        }
+        });
       }
     };
 
@@ -43,45 +39,42 @@ export default function LoginScreen() {
   }, [router]);
 
   const handleLogin = async () => {
-    if (email === "" || password === "") {
-      ToastAndroid.show("Please fill in both fields", ToastAndroid.SHORT);
+    // Validate email format
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailPattern.test(email)) {
+      ToastAndroid.show("Please enter a valid email address", ToastAndroid.SHORT);
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      ToastAndroid.show("Password must be at least 6 characters", ToastAndroid.SHORT);
       return;
     }
 
     try {
-      const response = await axios.post('http://192.168.1.12/BuildMate/api.php', {
-        action: 'login',
-        email,  // Use email instead of username
-        password,
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      if (response.data.success) {
-        const userData = { 
-          id: response.data.user_id, 
-          username: response.data.username, // Get the username from the response
-          email: response.data.email
-        };
+      await AsyncStorage.setItem("user_id", user.uid);
 
-        if (!userData.username) {
-          // If no username, redirect to NewUser screen
-          await AsyncStorage.setItem('user_id', userData.id.toString());
-          login(userData);
-          router.push("./newuser");
-        } else {
-          await AsyncStorage.setItem('user_id', userData.id.toString());
-          login(userData); // Store user data in AuthContext
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-          // Show success message
-          ToastAndroid.show('Logged in successfully', ToastAndroid.SHORT);
-          
-          router.push("./home");
-        }
+      if (userDoc.exists() && userDoc.data().username) {
+        ToastAndroid.show("Logged in successfully", ToastAndroid.SHORT);
+        router.push("./home"); // Redirect to home if username exists
       } else {
-        ToastAndroid.show(response.data.message || "Login failed", ToastAndroid.SHORT);
+        ToastAndroid.show("Welcome! Please create a username", ToastAndroid.SHORT);
+        router.push("./newuser"); // Redirect to NewUser if no username
       }
     } catch (error) {
-      console.error("Error during login:", error);
-      ToastAndroid.show("Error during login", ToastAndroid.SHORT);
+      // Handle incorrect password or other errors
+      if (error.code === 'auth/invalid-credential') {
+        ToastAndroid.show("Invalid Credentials. Please try again.", ToastAndroid.SHORT);
+      } else {
+        ToastAndroid.show(error.message || "Login failed", ToastAndroid.SHORT);
+      }
     }
 
     setEmail("");
@@ -90,9 +83,9 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#ffffff', '#008FDD']}
-      start={{ x: 0.5, y: 0.8 }} 
-      end={{ x: 0.5, y: 1 }} 
+      colors={["#ffffff", "#008FDD"]}
+      start={{ x: 0.5, y: 0.8 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.background}
     >
       <View style={styles.container}>
@@ -166,7 +159,7 @@ const styles = StyleSheet.create({
   image: {
     width: 175,
     height: 175,
-    resizeMode: "cover", 
+    resizeMode: "cover",
     borderRadius: 10,
   },
 });

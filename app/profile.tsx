@@ -46,6 +46,10 @@ export default function Profile() {
     router.push("./account");
   };
 
+  const navigateToPartPicker = () => {
+    router.push("./partpicker");
+  };
+
   const handleAvatarChange = () => {
     // Implement avatar change functionality here (e.g., using an image picker)
   };
@@ -129,7 +133,7 @@ export default function Profile() {
           <Icon name="users" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Community</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem} onPress={navigateToPartPicker}>
           <Icon name="cogs" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Part Picker</Text>
         </TouchableOpacity>

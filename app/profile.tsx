@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { firestore } from './firebaseConfig'; // Firebase configuration
-import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore methods
+import { firestore, storage } from './firebaseConfig'; // Firebase configuration
+import { doc, getDoc, updateDoc } from "firebase/firestore"; // Firestore methods
 import AuthContext from './AuthContext'; // Import AuthContext
+import BuildsContext from './BuildsContext'; // Import BuildsContext
 
 export default function Profile() {
   const [userProfile, setUserProfile] = useState(null); // To hold the user data
+  const [description, setDescription] = useState('');
+  const [isEditingDescription, setIsEditingDescription] = useState(false); // To track if the description is being edited
   const router = useRouter();
 
   // Use the context to get the authenticated user and username
   const { user, username } = useContext(AuthContext);
+
+  // Access builds data from BuildsContext
+  const { builds } = useContext(BuildsContext); 
 
   useEffect(() => {
     if (!user) {
@@ -30,11 +36,30 @@ export default function Profile() {
 
       if (docSnap.exists()) {
         setUserProfile(docSnap.data()); // Set the user profile data
+        setDescription(docSnap.data().description || ''); // Set the description if available
       } else {
         console.log("No such document!");
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+    }
+  };
+
+  const handleDescriptionChange = async () => {
+    if (description.trim() === '') {
+      Alert.alert('Description cannot be empty');
+      return;
+    }
+
+    try {
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, { description });
+
+      // Toggle the editing state
+      setIsEditingDescription(false);
+      fetchUserProfile();
+    } catch (error) {
+      console.error("Error updating description:", error);
     }
   };
 
@@ -50,19 +75,8 @@ export default function Profile() {
     router.push("./partpicker");
   };
 
-  const handleAvatarChange = () => {
-    // Implement avatar change functionality here (e.g., using an image picker)
-  };
-
-  const handleAvatarDelete = async () => {
-    try {
-      const userDocRef = doc(firestore, "users", user.uid);
-      await setDoc(userDocRef, { avatar: null }, { merge: true });
-
-      fetchUserProfile();
-    } catch (error) {
-      console.error("Error deleting avatar:", error);
-    }
+  const navigateToCompletedBuilds = () => {
+    router.push("./completedbuilds");
   };
 
   return (
@@ -86,7 +100,7 @@ export default function Profile() {
         <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]} >
           <Text style={[styles.TopmenuText, { color: 'black', fontWeight: "900" }]}>Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]} >
+        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]} onPress={navigateToCompletedBuilds}>
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Completed Builds</Text>
         </TouchableOpacity>
       </View>
@@ -99,10 +113,10 @@ export default function Profile() {
               style={styles.avatarImage}
             />
             <View style={styles.avatarButtons}>
-              <TouchableOpacity style={styles.changeButton} onPress={handleAvatarChange}>
+              <TouchableOpacity style={styles.changeButton} onPress={() => {}}>
                 <Text style={styles.changebuttonText}>Change Avatar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteButton} onPress={handleAvatarDelete}>
+              <TouchableOpacity style={styles.deleteButton} onPress={() => {}}>
                 <Text style={styles.deletebuttonText}>Delete Avatar</Text>
               </TouchableOpacity>
             </View>
@@ -113,14 +127,32 @@ export default function Profile() {
           </Text>
         </View>
         <View style={styles.section}>
-          <Text style={styles.paragraph}>You have not entered profile description</Text>
-          <TouchableOpacity style={styles.descriptionButton}>
-            <Text style={styles.descriptionbuttonText}>Edit Description</Text>
-          </TouchableOpacity>
+          <View style={styles.descriptionContainer}>
+            {isEditingDescription ? (
+              <>
+                <TextInput
+                  style={styles.descriptionInput}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Enter your profile description"
+                />
+                <TouchableOpacity style={styles.descriptionButton} onPress={handleDescriptionChange}>
+                  <Text style={styles.descriptionbuttonText}>Save Description</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.descriptionText}>{description || 'No description available'}</Text>
+                <TouchableOpacity style={styles.descriptionButton} onPress={() => setIsEditingDescription(true)}>
+                  <Text style={styles.descriptionbuttonText}>Edit Description</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
         <View style={[styles.section, { borderBottomWidth: 0 }]}>
           <Text style={{ fontWeight: "900" }}>Completed Builds</Text>
-          <Text style={{ fontWeight: "900" }}>2</Text>
+          <Text style={{ fontWeight: "900" }}>{builds.length}</Text> 
         </View>
       </ScrollView>
 
@@ -145,6 +177,7 @@ export default function Profile() {
     </LinearGradient>
   );
 }
+
 
 const styles = StyleSheet.create({
   background: {
@@ -297,7 +330,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 5,
     alignItems: "center",
-    marginRight: 10,
   },
   descriptionbuttonText: {
     color: "white",
@@ -306,5 +338,19 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     marginBottom: 20,
+  },
+  descriptionContainer: {
+    alignItems: 'center',
+  },
+  descriptionInput: {
+    borderColor: 'lightgray',
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 10,
+    width: '80%',
+  },
+  descriptionText: {
+    fontSize: 16,
+    marginBottom: 10,
   },
 });

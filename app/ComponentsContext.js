@@ -70,4 +70,6 @@ export const ComponentsProvider = ({ children }) => {
       {children}
     </ComponentsContext.Provider>
   );
+ 
 };
+export default ComponentsContext;

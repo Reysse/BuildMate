@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, FlatList, ScrollView, TouchableWithoutFeedback, Keyboard } from "react-native"; // Add TouchableWithoutFeedback and Keyboard
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, FlatList, ScrollView, TouchableWithoutFeedback, ToastAndroid, TextInput } from "react-native"; // Add TouchableWithoutFeedback and Keyboard
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/FontAwesome"; // For bottom menu icons
 import { ComponentsContext } from "./ComponentsContext"; // Importing the ComponentsContext
 import AuthContext from "./AuthContext"; // Importing the AuthContext
+import { firestore } from "./firebaseConfig";
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function PartPicker() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function PartPicker() {
   const [selectedGpu, setSelectedGpu] = useState(null);
   const [selectedPsu, setSelectedPsu] = useState(null);
   const [selectedSsd, setSelectedSsd] = useState(null);
+  const [buildName, setBuildName] = useState('');
+
 
   const [isCpuModalVisible, setIsCpuModalVisible] = useState(false);
   const [isMotherboardModalVisible, setIsMotherboardModalVisible] = useState(false);
@@ -24,6 +28,8 @@ export default function PartPicker() {
   const [isGpuModalVisible, setIsGpuModalVisible] = useState(false);
   const [isPsuModalVisible, setIsPsuModalVisible] = useState(false);
   const [isSsdModalVisible, setIsSsdModalVisible] = useState(false);
+  const [isNameModalVisible, setIsNameModalVisible] = useState(false);
+
 
   const [compatibleMotherboards, setCompatibleMotherboards] = useState([]);
   const [compatibleCpus, setCompatibleCpus] = useState([]);
@@ -44,7 +50,7 @@ export default function PartPicker() {
 
     // Calculate total required wattage based on selected components
     const calculateRequiredWattage = () => {
-      const buffer = 100;
+        const buffer = 100;
         return (selectedCpu?.value["Wattage"] || 0) + 
                (selectedGpu?.value["Wattage"] || 0) + 
                (selectedRam?.value["Wattage"] || 0) + 
@@ -54,11 +60,68 @@ export default function PartPicker() {
 
     const requiredWattage = calculateRequiredWattage();
 
-    // Filter logic as before
+    // SSD-First Compatibility Logic
+    // SSD-First Compatibility Logic
+    if (selectedSsd) {
+      const ssdInterface = selectedSsd.value["Interface"]; // e.g., PCIe 3.0 x4
+      const ssdFormFactor = selectedSsd.value["Form Factor"]; // e.g., M.2 2280
+      
+      // Debugging logs for selected SSD values
+      
+      const [ssdLength] = ssdFormFactor.match(/\d{4}/) || []; // Extract length, e.g., 2280
+      const isM2Key = ssdFormFactor.includes("M.2");
+  
+      // Filter motherboards based on M.2 slot compatibility
+      filteredMotherboards = components.motherboards
+          .filter((mb) => {
+              const storageSlots = mb.value["Storage Slot"]?.split(",").map((slot) => slot.trim()) || [];
+  
+              // Debugging log for storage slots in the motherboard
+  
+              // Check if any storage slot is compatible
+              const completeSlots = storageSlots.map((slot) => {
+                  // Adjusted regex to handle different slot descriptions
+                  const slotRegex = /(\d+x?)\s(M\.2|Hyper M\.2|Ultra M\.2)\s\(M Key\)\s(\d{4,5})\s(?:\(([^)]+)\)|([^,]+))/;
+
+                  const match = slot.match(slotRegex);
+  
+  
+                  if (!match) return null;
+  
+                  const [, slotType, slotKey, slotLengths, group4, group5] = match;
+                  const slotPcie = group4 || group5; // Safely assign PCIe details
+                  const supportedLengths = slotLengths.split(",").map((len) => len.trim()); // Multiple lengths can be supported
+  
+                  const slotPcieVersion = slotPcie ? parseFloat(slotPcie.split(" ")[1]) : null;
+  
+  
+                  // Check if the SSD length is supported and the PCIe version is compatible
+                  const isInterfaceCompatible = slotPcieVersion
+                      ? slotPcieVersion >= parseFloat(ssdInterface.split(" ")[1])
+                      : true;
+  
+                  // Debugging log for interface compatibility
+  
+                  // Check if SSD length is supported and PCIe version is compatible
+                  return supportedLengths.includes(ssdLength) && isInterfaceCompatible;
+              }).filter(Boolean); // Only keep valid slots
+  
+              return completeSlots.length > 0; // If there are any valid compatible slots
+          })
+          .map((mb, index) => ({
+              label: mb.value["Name"],
+              value: mb.value,
+              key: `mb-${mb.value["ID"] || index}`,
+          }));
+    }
+  
+  
+  
+    // CPU Compatibility Logic
     if (selectedCpu) {
         const cpuSocketType = cleanSocketType(selectedCpu.value["Socket Type"]);
 
-        filteredMotherboards = components.motherboards
+        filteredMotherboards = filteredMotherboards
             .filter((mb) => cleanSocketType(mb.value["Socket Type"]) === cpuSocketType)
             .map((mb, index) => ({
                 label: mb.value["Name"],
@@ -75,6 +138,7 @@ export default function PartPicker() {
             }));
     }
 
+    // Motherboard-First Compatibility Logic
     if (selectedMotherboard) {
         const motherboardSocketType = cleanSocketType(selectedMotherboard.value["Socket Type"]);
         const motherboardRamType = selectedMotherboard.value["Memory Type"];
@@ -86,7 +150,7 @@ export default function PartPicker() {
                 value: cpu.value,
                 key: `cpu-${cpu.value["ID"] || index}`,
             }));
-        
+
         filteredRam = components.rams
             .filter((ram) => ram.value["Memory Type"] === motherboardRamType)
             .map((ram, index) => ({
@@ -98,7 +162,7 @@ export default function PartPicker() {
 
     if (selectedRam) {
         const ramType = selectedRam.value["Memory Type"];
-        filteredMotherboards = components.motherboards
+        filteredMotherboards = filteredMotherboards
             .filter((mb) => mb.value["Memory Type"] === ramType)
             .map((mb, index) => ({
                 label: mb.value["Name"],
@@ -110,7 +174,7 @@ export default function PartPicker() {
     // GPU Compatibility Logic
     if (selectedGpu) {
         const gpuPcieVersion = selectedGpu.value["PCIe Interface"];
-        filteredMotherboards = components.motherboards
+        filteredMotherboards = filteredMotherboards
             .filter((mb) => {
                 const motherboardPcieVersions = mb.value["PCIe Version"]
                     .split(" ")
@@ -138,17 +202,6 @@ export default function PartPicker() {
             value: psu.value,
             key: `psu-${psu.value["ID"] || index}`,
         }));
-
-    // SSD Compatibility Logic
-    if (selectedSsd) {
-        filteredSsd = components.ssds
-            .filter((ssd) => selectedMotherboard?.value["Supported SSD Interface"] === ssd.value["Interface"])
-            .map((ssd, index) => ({
-                label: ssd.value["Name"],
-                value: ssd.value,
-                key: `ssd-${ssd.value["ID"] || index}`,
-            }));
-    }
 
     // Check if selected components are still compatible; if not, set them to null
     if (!filteredCpus.some((cpu) => cpu.value === selectedCpu?.value)) {
@@ -182,13 +235,47 @@ export default function PartPicker() {
     setCompatibleGpus(filteredGpus);
     setCompatiblePsu(filteredPsu);
     setCompatibleSsd(filteredSsd);
-}, [
-    selectedCpu, selectedMotherboard, selectedRam, selectedGpu, selectedPsu, selectedSsd, components,
-]);
+}, [selectedCpu, selectedMotherboard, selectedRam, selectedGpu, selectedPsu, selectedSsd, components,]);
 
 
+const saveBuild = async () => {
+  // Check if all components are selected
+  if (!selectedCpu || !selectedMotherboard || !selectedRam || !selectedGpu || !selectedPsu || !selectedSsd) {
+    ToastAndroid.show("Select all components before saving", ToastAndroid.SHORT);
+    return; // Exit function if any component is missing
+  }
 
+  try {
+    // Prepare the build data
+    const buildData = {
+      name: buildName,
+      cpu: selectedCpu.label,
+      motherboard: selectedMotherboard.label,
+      ram: selectedRam.label,
+      gpu: selectedGpu.label,
+      psu: selectedPsu.label,
+      ssd: selectedSsd.label,
+      user: user.uid,  // Store user ID for user-specific builds
+      createdAt: serverTimestamp(), // Add timestamp to the build
+    };
 
+    // Reference to the Firestore 'builds' collection
+    const buildsRef = collection(firestore, 'builds');
+
+    // Add a new document to the collection
+    await addDoc(buildsRef, buildData);
+    setIsNameModalVisible(false);
+    setSelectedCpu(null);
+    setSelectedMotherboard(null);
+    setSelectedRam(null);
+    setSelectedGpu(null);
+    setSelectedPsu(null);
+    setSelectedSsd(null);
+    alert("Build saved successfully!");
+  } catch (error) {
+    alert("Failed to save build.");
+  }
+};
 
   const navigateTo = (route) => {
     router.push(route);
@@ -197,6 +284,35 @@ export default function PartPicker() {
   // Static image mapping (adjust based on your actual image names)
 const images = {
   IntelCorei513600K: require("../assets/images/Intel Core i5-13600K.png"),
+  AMDRyzen57600: require("../assets/images/AMD Ryzen 5 7600.jpg"),
+  IntelCorei713700K: require("../assets/images/Intel Core i7-13700K.png"),
+  AMDRyzen77700X: require("../assets/images/AMD Ryzen 7 7700X.jpg"),
+  IntelCorei913900K: require("../assets/images/Intel Core i9-13900K.jpg"),
+  ASUSROGSTRIXZ790EGaming: require("../assets/images/ASUS ROG STRIX Z790-E Gaming.png"),
+  MSIMAGB650TOMAHAWKWiFi: require("../assets/images/MSI MAG B650 TOMAHAWK WiFi.png"),
+  GIGABYTEZ690AORUSProAX: require("../assets/images/GIGABYTE Z690 AORUS Pro AX.png"),
+  ASRockB660MProRSMicroATXLGA1700Motherboard: require("../assets/images/ASRock B660M Pro RS Micro ATX LGA1700 Motherboard.png"),
+  MSIPROB760PWiFi: require("../assets/images/MSI PRO B760-P WiFi.jpg"),
+  CorsairVengeanceDDR560002x16GB: require("../assets/images/Corsair Vengeance DDR5-6000 (2x16GB).png"),
+  GSkillTridentZ5RGBDDR564002x16GB: require("../assets/images/G.Skill Trident Z5 RGB DDR5-6400 (2x16GB).jpg"),
+  KingstonFuryBeastDDR552002x16GB: require("../assets/images/Kingston Fury Beast DDR5-5200 (2x16GB).jpg"),
+  KingstonFuryBeastDDR4SpecialEdition2x16GB: require("../assets/images/Kingston Fury Beast DDR4 Special Edition (2x16GB).png"),
+  TeamGroupTForceVulcanDDR556002x16GB: require("../assets/images/TeamGroup T-Force Vulcan DDR5-5600 (2x16GB).jpg"),
+  NVIDIARTX4060Ti: require("../assets/images/NVIDIA RTX 4060 Ti.png"),
+  AMDRadeonRX7700XT: require("../assets/images/AMD Radeon RX 7700 XT.jpg"),
+  NVIDIARTX3070Ti: require("../assets/images/NVIDIA RTX 3070 Ti.jpg"),
+  AMDRX6700XT: require("../assets/images/AMD RX 6700 XT.jpg"),
+  NVIDIARTX4080: require("../assets/images/NVIDIA RTX 4080.png"),
+  CorsairRM750x: require("../assets/images/Corsair RM750x.png"),
+  SeasonicFocusGX650: require("../assets/images/Seasonic Focus GX-650.jpg"),
+  EVGASuperNOVA850G6: require("../assets/images/EVGA SuperNOVA 850 G6.jpg"),
+  CoolerMasterMWE650V2: require("../assets/images/Cooler Master MWE 650 V2.png"),
+  ThermaltakeToughpowerGF1: require("../assets/images/Thermaltake Toughpower GF1.jpg"),
+  Samsung970EVOPlus1TB: require("../assets/images/Samsung 970 EVO Plus 1TB.jpg"),
+  WDBlackSN850X1TB: require("../assets/images/WD Black SN850X 1TB.jpg"),
+  CrucialP5Plus1TB: require("../assets/images/Crucial P5 Plus 1TB.jpg"),
+  KingstonKC30001TB: require("../assets/images/Kingston KC3000 1TB.jpg"),
+  SeagateFireCuda5301TB: require("../assets/images/Seagate FireCuda 530 1TB.png"),
   // Add other mappings here as needed
 };
 
@@ -313,9 +429,47 @@ const renderItem = (item, type) => (
             {selectedSsd ? selectedSsd.label : "Select an SSD"}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={() => setIsNameModalVisible(true)}  // Show modal when button is pressed
+        >
+          <Text style={styles.saveButtonText}>Save Build</Text>
+        </TouchableOpacity>
+
+
       </ScrollView>
 
       {/* Modals */}
+
+      {isNameModalVisible && (
+        <View style={styles.modalnameContainer}>
+          <Text style={styles.modalTitle}>Enter Build Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter build name"
+            value={buildName}
+            onChangeText={setBuildName}  // Update the build name state
+          />
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={styles.modalButton} 
+              onPress={saveBuild}  // Call saveBuild function after name is entered
+            >
+              <Text style={styles.modalButtonText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalButton} 
+              onPress={() => setIsNameModalVisible(false)}  // Close modal without saving
+            >
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+
+
       <Modal visible={isCpuModalVisible} onRequestClose={() => closeModal("cpu")} transparent>
         <TouchableWithoutFeedback onPress={() => closeModal("cpu")}>
           <View style={styles.modalWrapper}>
@@ -418,7 +572,6 @@ const renderItem = (item, type) => (
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Repeat for RAM, GPU, PSU, SSD modals */}
 
       <View style={styles.bottomMenu}>
         <TouchableOpacity style={styles.bottomMenuItem} onPress={() => navigateTo("./home")}>
@@ -573,5 +726,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "black",
   },
+  saveButton: {
+    padding: 10,
+    backgroundColor: "#0056FF",
+    borderRadius: 5,
+    width: "50%",
+    marginVertical: 20,
+  },
+  saveButtonText: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "bold",
+  },  
+  modalnameContainer: {
+    position: 'absolute',
+    top: '30%',
+    left: '10%',
+    right: '10%',
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    elevation: 5,
+    zIndex: 1, // Ensure modal is above other content
+  },
+  
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  
+  input: {
+    height: 40,
+    borderColor: 'lightgray',
+    borderWidth: 1,
+    paddingLeft: 10,
+    borderRadius: 5,
+    marginBottom: 20,
+  },
+  
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  
+  modalButton: {
+    backgroundColor: '#0056FF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },  
 });
 

@@ -20,7 +20,7 @@ export default function Home() {
   };
 
   const navigateToBuild = () => {
-    router.push("./build"); // Navigate to the PC builder screen
+    router.push("./partpicker"); // Navigate to the PC builder screen
   };
 
   const navigateToCommunity = () => {

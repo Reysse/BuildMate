@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/FontAwesome"; // For bottom menu icons
 import { ComponentsContext } from "./ComponentsContext"; // Importing the ComponentsContext
 import AuthContext from "./AuthContext"; // Importing the AuthContext
+import BuildsContext from "./BuildsContext";
 import { firestore } from "./firebaseConfig";
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -12,6 +13,7 @@ export default function PartPicker() {
   const router = useRouter();
   const { user, username } = useContext(AuthContext); // Destructure user and username from AuthContext
   const components = useContext(ComponentsContext); // Consume the ComponentsContext to get components data
+  const { refreshBuilds } = useContext(BuildsContext);
 
   const [selectedCpu, setSelectedCpu] = useState(null);
   const [selectedMotherboard, setSelectedMotherboard] = useState(null);
@@ -239,14 +241,12 @@ export default function PartPicker() {
 
 
 const saveBuild = async () => {
-  // Check if all components are selected
   if (!selectedCpu || !selectedMotherboard || !selectedRam || !selectedGpu || !selectedPsu || !selectedSsd) {
     ToastAndroid.show("Select all components before saving", ToastAndroid.SHORT);
-    return; // Exit function if any component is missing
+    return;
   }
 
   try {
-    // Prepare the build data
     const buildData = {
       name: buildName,
       cpu: selectedCpu.label,
@@ -255,15 +255,17 @@ const saveBuild = async () => {
       gpu: selectedGpu.label,
       psu: selectedPsu.label,
       ssd: selectedSsd.label,
-      user: user.uid,  // Store user ID for user-specific builds
-      createdAt: serverTimestamp(), // Add timestamp to the build
+      user: user.uid,
+      createdAt: serverTimestamp(),
     };
 
-    // Reference to the Firestore 'builds' collection
     const buildsRef = collection(firestore, 'builds');
-
-    // Add a new document to the collection
     await addDoc(buildsRef, buildData);
+
+    // Refresh the builds context after saving
+    refreshBuilds();
+
+    // Clear selections
     setIsNameModalVisible(false);
     setSelectedCpu(null);
     setSelectedMotherboard(null);
@@ -271,6 +273,7 @@ const saveBuild = async () => {
     setSelectedGpu(null);
     setSelectedPsu(null);
     setSelectedSsd(null);
+
     alert("Build saved successfully!");
   } catch (error) {
     alert("Failed to save build.");
@@ -379,6 +382,34 @@ const renderItem = (item, type) => (
             {selectedCpu ? selectedCpu.label : "Select a CPU"}
           </Text>
         </TouchableOpacity>
+        {selectedCpu && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedCpu.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        />    
+          <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+              Cores: {selectedCpu.value.Cores}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Frequency: {selectedCpu.value.Frequency}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Memory: {selectedCpu.value["Memory Support"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Power Limit: {selectedCpu.value["Power Limit"]}W
+            </Text>
+            <Text style={styles.paragraphText}>
+            Socket: {selectedCpu.value["Socket Type"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Threads: {selectedCpu.value.Threads}
+            </Text>
+        </View>
+        </View>
+      )}
 
         <Text style={styles.subtitle}>Motherboard</Text>
         <TouchableOpacity
@@ -389,7 +420,34 @@ const renderItem = (item, type) => (
             {selectedMotherboard ? selectedMotherboard.label : "Select a Motherboard"}
           </Text>
         </TouchableOpacity>
-
+        {selectedMotherboard && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedMotherboard.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        /> 
+          <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+            Form Factor (Size): {selectedMotherboard.value["Form Factor (Size)"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Memory: {selectedMotherboard.value["Memory Type"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Number of Slots & Capacity: {selectedMotherboard.value["Number of Slots and Capacity"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            PCIe Version: {selectedMotherboard.value["PCIe Version"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Power Limit: {selectedMotherboard.value["Power Limit"]}W
+            </Text>
+            <Text style={styles.paragraphText}>
+            Socket: {selectedMotherboard.value["Socket Type"]}
+            </Text>
+        </View>
+        </View>
+      )}
         <Text style={styles.subtitle}>RAM</Text>
         <TouchableOpacity
           style={styles.button}
@@ -399,7 +457,31 @@ const renderItem = (item, type) => (
             {selectedRam ? selectedRam.label : "Select RAM"}
           </Text>
         </TouchableOpacity>
-
+        {selectedRam && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedRam.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        /> 
+          <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+            Capacity: {selectedRam.value.Capacity}
+            </Text>
+            <Text style={styles.paragraphText}>
+            DIMM Type: {selectedRam.value["DIMM Type"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Memory: {selectedRam.value["Memory Type"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Speed: {selectedRam.value.Speed}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Wattage: {selectedRam.value.Wattage}W
+            </Text>
+        </View>
+        </View>
+      )}
         <Text style={styles.subtitle}>GPU</Text>
         <TouchableOpacity
           style={styles.button}
@@ -409,7 +491,40 @@ const renderItem = (item, type) => (
             {selectedGpu ? selectedGpu.label : "Select a GPU"}
           </Text>
         </TouchableOpacity>
-
+        {selectedGpu && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedGpu.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        /> 
+          <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+            External Power: {selectedGpu.value["External Power"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Height: {selectedGpu.value.Height}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Lenght: {selectedGpu.value.Length}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Width: {selectedGpu.value.Width}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Wattage: {selectedGpu.value.Wattage}W
+            </Text>
+            <Text style={styles.paragraphText}>
+            Memory Size: {selectedGpu.value["Memory Size"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Outputs: {selectedGpu.value.Outputs}
+            </Text>
+            <Text style={styles.paragraphText}>
+            PCIe Interface: {selectedGpu.value["PCIe Interface"]}
+            </Text>
+        </View>
+        </View>
+      )}
         <Text style={styles.subtitle}>PSU</Text>
         <TouchableOpacity
           style={styles.button}
@@ -419,7 +534,22 @@ const renderItem = (item, type) => (
             {selectedPsu ? selectedPsu.label : "Select a PSU"}
           </Text>
         </TouchableOpacity>
-
+        {selectedPsu && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedPsu.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        /> 
+        <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+            Type: {selectedPsu.value.Type}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Wattage: {selectedPsu.value.Wattage}W
+            </Text>
+        </View>
+        </View>
+      )}
         <Text style={styles.subtitle}>SSD</Text>
         <TouchableOpacity
           style={styles.button}
@@ -429,7 +559,28 @@ const renderItem = (item, type) => (
             {selectedSsd ? selectedSsd.label : "Select an SSD"}
           </Text>
         </TouchableOpacity>
-
+        {selectedSsd && (
+          <View style={{width: "100%"}}>
+          <Image
+          source={images[selectedSsd.value["Image"]]} // Using predefined image mapping
+          style={[styles.modalitemImage, {alignSelf: "center"}]}
+        /> 
+        <View style={{alignSelf: "baseline"}}>
+            <Text style={styles.paragraphText}>
+            Capacity: {selectedSsd.value.Capacity}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Form Factor: {selectedSsd.value["Form Factor"]}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Interface: {selectedSsd.value.Interface}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Wattage: {selectedSsd.value.Wattage}W
+            </Text>
+        </View>
+        </View>
+      )}
         <TouchableOpacity
           style={styles.saveButton}
           onPress={() => setIsNameModalVisible(true)}  // Show modal when button is pressed
@@ -674,6 +825,11 @@ const styles = StyleSheet.create({
     color: "black",
     flex: 1,
     marginBottom: 25,
+  },
+  paragraphText: { 
+    color: "#555", 
+    marginBottom: 10, 
+    fontSize: 14 
   },
   button: {
     padding: 10,

@@ -46,11 +46,6 @@ export default function Profile() {
   };
 
   const handleDescriptionChange = async () => {
-    if (description.trim() === '') {
-      Alert.alert('Description cannot be empty');
-      return;
-    }
-
     try {
       const userDocRef = doc(firestore, "users", user.uid);
       await updateDoc(userDocRef, { description });

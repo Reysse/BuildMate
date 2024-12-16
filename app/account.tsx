@@ -12,19 +12,19 @@ export default function Account() {
   const { user, username, email, logout } = useContext(AuthContext); // Destructure user, username, and email from AuthContext
 
 
-  const handleLogout = async () => {
-    try {
-      // Clear user data from context first (if required)
-      
-      await logout();  // Assuming this is the function from AuthContext
-      
-      // Use `router.replace()` to navigate without causing flashing
-      router.replace("./"); // Or replace with the appropriate login screen path
-    } catch (error) {
-      console.error("Error during logout:", error);
-    }
-  };
-  
+const handleLogout = async () => {
+  if (isProcessing) {
+    console.log("Logout blocked: waiting for save/edit to complete");
+    return; // Don't allow logout until processing is done
+  }
+
+  try {
+    await logout();  // Ensure logout is called after save/edit is complete
+    router.replace("./"); // Navigate to login page
+  } catch (error) {
+    console.error("Error during logout:", error);
+  }
+};
   
   
 

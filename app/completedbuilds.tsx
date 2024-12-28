@@ -97,6 +97,10 @@ export default function CompletedBuilds() {
     router.push("./account");
   };
 
+  const navigateToCommunity = () => {
+    router.push("./community"); // Navigate to the community tab
+  };
+
   const navigateToProfile = () => {
     router.push("./profile");
   };
@@ -193,7 +197,7 @@ export default function CompletedBuilds() {
           <Icon name="home" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem}onPress={navigateToCommunity}>
           <Icon name="users" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Community</Text>
         </TouchableOpacity>

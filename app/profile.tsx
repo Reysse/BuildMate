@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, Tex
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { firestore, storage } from './firebaseConfig'; // Firebase configuration
+import { firestore } from './firebaseConfig'; // Firebase configuration
 import { doc, getDoc, updateDoc } from "firebase/firestore"; // Firestore methods
 import AuthContext from './AuthContext'; // Import AuthContext
 import BuildsContext from './BuildsContext'; // Import BuildsContext
@@ -66,6 +66,10 @@ export default function Profile() {
     router.push("./account");
   };
 
+  const navigateToCommunity = () => {
+    router.push("./community"); // Navigate to the community tab
+  };
+
   const navigateToPartPicker = () => {
     router.push("./partpicker");
   };
@@ -92,7 +96,7 @@ export default function Profile() {
         <TouchableOpacity style={styles.TopmenuItem} onPress={navigateToAccount}>
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Account</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]} >
+        <TouchableOpacity style={[styles.TopmenuItem, styles.selecttopmenu]}>
           <Text style={[styles.TopmenuText, { color: 'black', fontWeight: "900" }]}>Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]} onPress={navigateToCompletedBuilds}>
@@ -156,7 +160,7 @@ export default function Profile() {
           <Icon name="home" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem} onPress={navigateToCommunity}>
           <Icon name="users" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Community</Text>
         </TouchableOpacity>

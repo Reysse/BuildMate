@@ -39,6 +39,8 @@ export default function PartPicker() {
   const [compatibleGpus, setCompatibleGpus] = useState([]);
   const [compatiblePsu, setCompatiblePsu] = useState([]);
   const [compatibleSsd, setCompatibleSsd] = useState([]);
+  const [totalBudget, setTotalBudget] = useState(0);
+  const [currentTotal, setCurrentTotal] = useState(0);
 
   useEffect(() => {
     let filteredCpus = components.cpus;
@@ -60,7 +62,21 @@ export default function PartPicker() {
                buffer;
     };
 
+    const calculateCurrentTotal = () => {
+      return (
+        (selectedCpu?.value["Price"] || 0) +
+        (selectedGpu?.value["Price"] || 0) +
+        (selectedRam?.value["Price"] || 0) +
+        (selectedMotherboard?.value["Price"] || 0) +
+        (selectedPsu?.value["Price"] || 0) +
+        (selectedSsd?.value["Price"] || 0)
+      );
+    };
+
     const requiredWattage = calculateRequiredWattage();
+    const calccurrentTotal = calculateCurrentTotal();
+    setCurrentTotal(calccurrentTotal)
+    const remainingBudget = totalBudget ? totalBudget - currentTotal : Infinity;
 
     // SSD-First Compatibility Logic
     // SSD-First Compatibility Logic
@@ -205,30 +221,44 @@ export default function PartPicker() {
             key: `psu-${psu.value["ID"] || index}`,
         }));
 
-    // Check if selected components are still compatible; if not, set them to null
-    if (!filteredCpus.some((cpu) => cpu.value === selectedCpu?.value)) {
-        setSelectedCpu(null);
-    }
 
-    if (!filteredMotherboards.some((mb) => mb.value === selectedMotherboard?.value)) {
-        setSelectedMotherboard(null);
+    if (totalBudget) {
+      const budgetFilter = (item) => (item.value.Price || 0) <= remainingBudget;
+      
+      filteredCpus = filteredCpus.filter(budgetFilter);
+      filteredMotherboards = filteredMotherboards.filter(budgetFilter);
+      filteredRam = filteredRam.filter(budgetFilter);
+      filteredGpus = filteredGpus.filter(budgetFilter);
+      filteredPsu = filteredPsu.filter(budgetFilter);
+      filteredSsd = filteredSsd.filter(budgetFilter);
     }
+    
 
-    if (!filteredRam.some((ram) => ram.value === selectedRam?.value)) {
-        setSelectedRam(null);
-    }
+        // Check if selected components are still compatible; if not, set them to null
+        if (!filteredCpus.some((cpu) => cpu.value === selectedCpu?.value)) {
+          setSelectedCpu(null);
+      }
+  
+      if (!filteredMotherboards.some((mb) => mb.value === selectedMotherboard?.value)) {
+          setSelectedMotherboard(null);
+      }
+  
+      if (!filteredRam.some((ram) => ram.value === selectedRam?.value)) {
+          setSelectedRam(null);
+      }
+  
+      if (!filteredGpus.some((gpu) => gpu.value === selectedGpu?.value)) {
+          setSelectedGpu(null);
+      }
+  
+      if (!filteredPsu.some((psu) => psu.value === selectedPsu?.value)) {
+          setSelectedPsu(null);
+      }
+  
+      if (!filteredSsd.some((ssd) => ssd.value === selectedSsd?.value)) {
+          setSelectedSsd(null);
+      }
 
-    if (!filteredGpus.some((gpu) => gpu.value === selectedGpu?.value)) {
-        setSelectedGpu(null);
-    }
-
-    if (!filteredPsu.some((psu) => psu.value === selectedPsu?.value)) {
-        setSelectedPsu(null);
-    }
-
-    if (!filteredSsd.some((ssd) => ssd.value === selectedSsd?.value)) {
-        setSelectedSsd(null);
-    }
 
     // Set the compatible components after filtering
     setCompatibleMotherboards(filteredMotherboards);
@@ -237,7 +267,7 @@ export default function PartPicker() {
     setCompatibleGpus(filteredGpus);
     setCompatiblePsu(filteredPsu);
     setCompatibleSsd(filteredSsd);
-}, [selectedCpu, selectedMotherboard, selectedRam, selectedGpu, selectedPsu, selectedSsd, components,]);
+}, [selectedCpu, selectedMotherboard, selectedRam, selectedGpu, selectedPsu, selectedSsd, components, totalBudget]);
 
 
 const saveBuild = async () => {
@@ -373,6 +403,24 @@ const renderItem = (item, type) => (
 
         <Text style={styles.semititle}>Build Your PC</Text>
 
+        <View style={{ padding: 10, backgroundColor: "#f0f0f0", marginBottom: 10, borderRadius: 5 }}>
+          <Text style={{ fontSize: 18, fontWeight: "bold" }}>Set Total Budget:</Text>
+          <TextInput
+            style={{
+              height: 40,
+              borderColor: "#ccc",
+              borderWidth: 1,
+              borderRadius: 5,
+              paddingHorizontal: 10,
+              marginTop: 5,
+            }}
+            keyboardType="numeric"
+            placeholder="Enter budget"
+            value={totalBudget.toString()}
+            onChangeText={(text) => setTotalBudget(Number(text) || 0)} // Parse input as a number
+          />
+        </View>
+
         <Text style={styles.subtitle}>CPU</Text>
         <TouchableOpacity
           style={styles.button}
@@ -406,6 +454,9 @@ const renderItem = (item, type) => (
             </Text>
             <Text style={styles.paragraphText}>
             Threads: {selectedCpu.value.Threads}
+            </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedCpu.value.Price}
             </Text>
         </View>
         </View>
@@ -445,6 +496,9 @@ const renderItem = (item, type) => (
             <Text style={styles.paragraphText}>
             Socket: {selectedMotherboard.value["Socket Type"]}
             </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedMotherboard.value.Price}
+            </Text>
         </View>
         </View>
       )}
@@ -478,6 +532,9 @@ const renderItem = (item, type) => (
             </Text>
             <Text style={styles.paragraphText}>
             Wattage: {selectedRam.value.Wattage}W
+            </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedRam.value.Price}
             </Text>
         </View>
         </View>
@@ -522,6 +579,9 @@ const renderItem = (item, type) => (
             <Text style={styles.paragraphText}>
             PCIe Interface: {selectedGpu.value["PCIe Interface"]}
             </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedGpu.value.Price}
+            </Text>
         </View>
         </View>
       )}
@@ -546,6 +606,9 @@ const renderItem = (item, type) => (
             </Text>
             <Text style={styles.paragraphText}>
             Wattage: {selectedPsu.value.Wattage}W
+            </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedPsu.value.Price}
             </Text>
         </View>
         </View>
@@ -578,9 +641,17 @@ const renderItem = (item, type) => (
             <Text style={styles.paragraphText}>
             Wattage: {selectedSsd.value.Wattage}W
             </Text>
+            <Text style={styles.paragraphText}>
+            Price: P{selectedSsd.value.Price}
+            </Text>
         </View>
         </View>
       )}
+      <View>
+        <Text style={{marginTop: 20}}>Total: P
+          {currentTotal}
+        </Text>
+      </View>
         <TouchableOpacity
           style={styles.saveButton}
           onPress={() => setIsNameModalVisible(true)}  // Show modal when button is pressed

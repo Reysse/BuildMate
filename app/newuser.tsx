@@ -25,7 +25,7 @@ export default function NewUser() {
   // If user is not logged in, navigate back to the login screen
   useEffect(() => {
     if (!user) {
-      router.push("/login");
+      router.push("./index");
     }
   }, [user, router]);
 

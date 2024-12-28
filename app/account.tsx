@@ -32,9 +32,22 @@ const handleLogout = async () => {
     router.push("./home");
   };
 
+  const navigateToCommunity = () => {
+    router.push("./community"); // Navigate to the community tab
+  };
+
+  const navigateToPartPicker = () => {
+    router.push("./partpicker"); // Navigate to the part picker screen
+  };
+
   const navigateToProfile = () => {
     router.push("./profile");
   };
+
+  const navigateToCompletedBuilds = () => {
+    router.push("./completedbuilds"); // Navigate to profile screen
+  };
+
 
   return (
     <LinearGradient
@@ -58,7 +71,7 @@ const handleLogout = async () => {
         <TouchableOpacity style={styles.TopmenuItem} onPress={navigateToProfile}>
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]}>
+        <TouchableOpacity style={[styles.TopmenuItem, { borderTopRightRadius: 20 }]}onPress={navigateToCompletedBuilds}>
           <Text style={[styles.TopmenuText, { color: 'white', fontWeight: "900" }]}>Completed Builds</Text>
         </TouchableOpacity>
       </View>
@@ -100,15 +113,15 @@ const handleLogout = async () => {
           <Icon name="home" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem}onPress={navigateToCommunity}>
           <Icon name="users" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Community</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem}onPress={navigateToPartPicker}>
           <Icon name="cogs" size={30} color="#0056FF" />
           <Text style={styles.BotmenuText}>Part Picker</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.BotmenuItem}>
+        <TouchableOpacity style={styles.BotmenuItem}onPress={navigateToProfile}>
           <Icon name="user" size={30} color="black" />
           <Text style={styles.BotmenuText}>Profile</Text>
         </TouchableOpacity>

@@ -92,7 +92,7 @@ export default function DetailsBuild() {
       end={{ x: 0.5, y: 0.2 }}
       style={styles.background}
     >
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContainer}>
+      
         <View style={styles.logoContainer}>
           <Image
             source={require("../../assets/images/BuildMate-Logo.png")}
@@ -100,6 +100,27 @@ export default function DetailsBuild() {
           />
           <Text style={styles.title}>BUILDMATE</Text>
         </View>
+        <View
+          style={{
+            backgroundColor: "white",
+            padding: 5,
+            width: 150,
+            height: 50,
+            marginTop: 35,
+            justifyContent: "center", // Centers content vertically
+            alignItems: "center", // Centers content horizontally
+            borderTopLeftRadius: 10,
+            borderTopRightRadius: 10,
+            borderColor: "lightgray", 
+            borderWidth: 1
+          }}
+        >
+          <Text style={{ fontWeight: "900", fontSize: 20, textAlign: "center" }}>
+            {buildDetails?.name}
+          </Text>
+        </View>
+
+      <ScrollView style={[styles.scrollView, {backgroundColor: "white", borderColor: "lightgray", borderWidth: 1}]} contentContainerStyle={styles.scrollContainer}>
         <View style={styles.section}>
           {buildDetails ? (
             Object.entries(buildDetails)
@@ -148,7 +169,9 @@ const styles = StyleSheet.create({
     width: "100%",
     borderBottomColor: "lightgray",
     borderBottomWidth: 1,
-    padding: 25,
+    paddingLeft: 25,
+    paddingRight: 25,
+    paddingBottom: 25,
   },
   buildName: {
     fontSize: 20,
